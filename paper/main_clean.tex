@@ -13,11 +13,12 @@
 \usepackage{mathrsfs}
 \usepackage{dsfont}
 \usepackage[mathscr]{euscript}
-\usepackage{esint, enumitem, graphicx, float}
+\usepackage{esint, enumitem, graphicx}
 \usepackage{newtxtext,newtxmath} 
 \usepackage{mathtools}
 % Colour
 \usepackage[usenames,dvipsnames,x11names]{xcolor}
+\graphicspath{{figures/}{paper/figures/}{./}}
 \usepackage{listings}
 
 % Define Mathematica syntax highlighting
@@ -34,6 +35,7 @@
 
 \usepackage{microtype}
 \usepackage{hyperref}
+\hypersetup{hidelinks}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 \usepackage{tikz}
@@ -57,6 +59,8 @@ on the occasion of the tenth anniversary of his passing}
 \newtheorem{prop}[thm]{Proposition}
 \newtheorem{lem}[thm]{Lemma}
 \newtheorem{cor}[thm]{Corollary}
+\theoremstyle{definition}
+\newtheorem{alg}[thm]{Algorithm}
 \theoremstyle{remark}
 \newtheorem{rem}[thm]{Remark}
 
@@ -68,22 +72,23 @@ on the occasion of the tenth anniversary of his passing}
 \maketitle
 
 \begin{abstract}
-We refine the cycle-walk (Fourier) template of Gnacik and the author to quantify when a~$\delta$-Sule\u{\i}manova spectrum $(1,\lambda_2,\dots,\lambda_n)$ (with $\lambda_j\le 0$) is realised by a symmetric doubly stochastic matrix. For the canonical cycle basis we compute the \emph{exact} size-dependent threshold
+We develop structured numerical linear algebra algorithms for constructing symmetric doubly stochastic matrices with prescribed Sule\u{\i}manova spectrum.  The algorithms use the Schur realisation
+\(P(\Lambda)=Q\Lambda Q^{\top}\), where \(Q\) is a structured orthogonal basis with Perron column \(\mathbf 1/\sqrt n\); entrywise non-negativity is certified by a coherence constant that is cheap to compute and sharp for the bases considered here.  For the canonical cycle basis we compute the exact size-dependent threshold
 \[
-\delta_n \;=\; 1-\frac{1}{2\cos^2\!\Big(\frac{\pi}{4n}\rho(n)\Big)},
+\delta_n=1-\frac{1}{2\cos^2\!\Big(\frac{\pi}{4n}\rho(n)\Big)},
 \quad
 \rho(n)\in\{0,1,2,4\}\ \text{determined by } n\bmod 8,
 \]
-which improves $1/2$ if and only if $8\nmid n$; we also prove sharpness for that template. We then introduce an \emph{optimally phase-aligned} cycle basis which removes the `$8\mid n$' artefact and yields better sufficient bound
+which improves the previously used \(1/2\) bound if and only if \(8\nmid n\), and we prove sharpness for that template.  We then introduce an optimally phase-aligned cycle basis for which
 \[
-\delta_n^{\rm (ph)} \;=\;
+\delta_n^{\rm (ph)}=
 \begin{cases}
 \displaystyle 1-\dfrac{1}{2\cos^2(\pi/n)},   & n\equiv 0\pmod{4},\\[2mm]
 \displaystyle 1-\dfrac{1}{2\cos^2(\pi/2n)},  & n\equiv 2\pmod{4},\\[2mm]
 \displaystyle 1-\dfrac{1}{2\cos^2(\pi/4n)},  & n\ \text{odd},
 \end{cases}
 \]
-so that $\delta_n^{\rm (ph)}<\tfrac12$ for \emph{every} $n\ge3$ and $\delta_n^{\rm (ph)}=\delta_n$ unless $8\mid n$. Next, on abelian $2$-groups, the Walsh--Hadamard basis has coherence $M=1$ and hence suffices for \emph{all} Sule\u{\i}manova lists ($\delta=0$); the same conclusion holds in every Hadamard order (\emph{e.g.}, Paley families).
+so \(\delta_n^{\rm (ph)}<1/2\) for every \(n\ge3\).  In Hadamard orders, including Sylvester--Walsh and Paley families, the coherence is optimal, \(M(Q)=1\), and every strict Sule\u{\i}manova list is realised.  The numerical part of the paper gives reproducible tests of the certificates, floating-point residuals, computational cost, Monte-Carlo success probabilities, and two application-oriented experiments: design of reversible Markov chains with prescribed mixing rates and average-consensus iterations with certified non-negative weights.
 \end{abstract}
 
 \section{Introduction}
@@ -108,7 +113,7 @@ The entire problem is thus reduced to a single, challenging question: for a give
 
 The papers \cite{Perfect} and \cite{PM65} seem to be foundational for the problem. Recent work has approached this question from several angles. One approach provides general sufficient conditions that depend only on the sum of the non-Perron eigenvalues. A key result in this vein was provided by Gnacik and the author \cite{GK20}, who used the eigenbasis of the $n$-cycle graph for $Q$ to show that any Sule\u{\i}manova spectrum is realisable if $1 + \sum_{j=2}^n \lambda_j > 1/2$. It was noted, however, that this bound appeared to be sharp for this basis, particularly in dimensions where $n$ is a multiple of 8. A different approach, seen in the work of Sarkhoni \emph{et al}.~\cite{Sarkhoni25}, forgoes general sum-based conditions and instead derives necessary and sufficient conditions for highly structured spectra, such as $(1, 0, \dots, 0, \lambda_n)$, by constructing a bespoke orthogonal matrix $Q$ tailored to that specific list.\smallskip
 
-In this paper, we unify and advance these perspectives. We begin by revisiting the cycle-walk basis from \cite{GK20}, replacing their baseline bound with a precise, dimension-dependent threshold that confirms the `$8 \mid n$' barrier is an artefact of the basis, not the problem itself. We then resolve this issue by introducing an optimally phase-aligned cycle basis that yields an improved bound, strictly better than $1/2$ for all dimensions $n \ge 3$. Finally, we generalise the underlying principle to a criterion based on basis \emph{coherence}, showing that bases derived from abelian 2-groups (Walsh--Hadamard matrices) achieve the ideal coherence, allowing for the realisation of \emph{all} Sule\u{\i}manova spectra with a strictly positive trace sum.\smallskip
+In this paper, we unify and advance these perspectives. We begin by revisiting the cycle-walk basis from \cite{GK20}, replacing their baseline bound with a precise, dimension-dependent threshold that confirms the `$8 \mid n$' barrier is an artefact of the basis, not the problem itself. We then resolve this issue by introducing an optimally phase-aligned cycle basis that yields an improved bound, strictly better than $1/2$ for all dimensions $n \ge 3$. Finally, we generalise the underlying principle to a criterion based on basis \emph{coherence}, showing that Walsh--Hadamard bases from elementary abelian $2$-groups, and more generally Hadamard orders such as Paley families, achieve the ideal coherence.  After the theoretical development we give numerical tests, residual checks, timing measurements, and application experiments for Markov-chain and average-consensus design.\smallskip
 
 Let $\sigma=(1,\lambda_2,\ldots,\lambda_n)$ with $\lambda_j\in[-1,0]$ for $j\ge 2$. Following Paparella \cite{Paparella16}, we call $\sigma$ a~\emph{Sule\u{\i}manova spectrum} and say it is \emph{$\delta$-Sule\u{\i}manova} if
 \[
@@ -131,8 +136,49 @@ In the present paper, we keep the Schur template $P(\Lam)=Q\Lam Q^\top$ and:
 \begin{itemize}
 \item compute \emph{exactly} the worst coefficient for the canonical cycle basis, obtaining a closed-form $\delta_n$ that improves $\tfrac12$ iff $8\nmid n$, with a matching sharpness example;
 \item introduce an \emph{optimally phase-aligned} cycle basis (still orthogonal, same Perron column) giving the \emph{correct} piecewise bound $\delta_n^{\rm (ph)}<\tfrac12$ for every $n\ge3$, which strictly improves the $8\mid n$ case and is optimal within the cycle family;
-\item prove a general `coherence $\Rightarrow$ sufficient $\delta$' lemma and apply it to Walsh--Hadamard bases (abelian $2$-groups) and Hadamard orders (via Paley), obtaining \emph{$\delta=0$ in those orders only}. Here `$\delta=0$' means the \emph{strict} condition $1+\sum\lambda_j>0$ suffices; this does not contradict obstructions on the boundary $1+\sum\lambda_j=0$ (\emph{e.g.}, $(1,0,\dots,0,-1)$ in odd dimensions).
+\item prove a general `coherence $\Rightarrow$ sufficient $\delta$' lemma and apply it to Walsh--Hadamard bases from elementary abelian $2$-groups and to Hadamard orders (via Paley), obtaining \emph{$\delta=0$ in those orders only}. Here `$\delta=0$' means the \emph{strict} condition $1+\sum\lambda_j>0$ suffices; this does not contradict obstructions on the boundary $1+\sum\lambda_j=0$ (\emph{e.g.}, $(1,0,\dots,0,-1)$ in odd dimensions);
+\item give a numerical linear algebra implementation path: dense Schur construction, coherence-based certification, residual checks, timing experiments, Monte-Carlo stress tests, and two application tests in reversible Markov chains and average consensus.
 \end{itemize}
+
+
+\section{Structured Schur realisation and numerical certification}\label{sec:algorithms}
+
+The constructive part of the SDIEP can be viewed as an inverse eigensolver with a non-negativity certificate.  Instead of starting from a matrix and computing its eigenvalues, we start from the desired eigenvalues and choose a structured orthogonal basis in which the Perron vector is fixed.  The numerical task is then to construct
+\[
+        P=Q\Lambda Q^{\top},\qquad Q^{\top}Q=I,
+        \qquad q_0=\frac{\mathbf 1}{\sqrt n},
+\]
+and to certify that the entries of $P$ are non-negative.  The following algorithm is the implementation used in the experiments of Section~\ref{sec:numerics}.
+
+\begin{alg}[Structured Schur realisation with coherence certificate]\label{alg:schur}
+Given a list $\sigma=(1,\lambda_2,\ldots,\lambda_n)$ with $\lambda_j\le0$, a structured basis family, and a numerical tolerance $\tau$:
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item Construct an orthogonal matrix $Q=[q_0,\ldots,q_{n-1}]$ with $q_0=\mathbf 1/\sqrt n$.
+\item Compute, or evaluate from a closed formula, the coherence
+\[
+        M(Q)=n\max_{1\le j\le n-1}\|q_j\|_{\infty}^2.
+\]
+\item Let $T=1+\sum_{j=2}^n\lambda_j$.  If $T>1-1/M(Q)$, record the analytic certificate
+\[
+        \min_{k,\ell}P_{k\ell}\ge \frac{1}{n}\bigl(1+M(Q)(T-1)\bigr)>0.
+\]
+\item Form $Y=Q\Lambda$ by diagonal scaling and then $P=YQ^{\top}$ by a dense matrix--matrix product.
+\item Report the diagnostic quantities
+\[
+\|P\mathbf 1-\mathbf 1\|_{\infty},\quad
+\|P-P^{\top}\|_{F},\quad
+\min_{k,\ell}P_{k\ell},\quad
+\max_i |\mu_i(P)-\lambda_i|,
+\]
+where the last residual compares sorted spectra.  Accept the numerical realisation if the analytic certificate holds or, in exploratory tests, if $\min_{k,\ell}P_{k\ell}\ge-\tau$.
+\end{enumerate}
+\end{alg}
+
+For an explicitly stored dense basis, the diagonal scaling costs $O(n^2)$ operations and the product $YQ^{\top}$ costs $O(n^3)$ operations.  These costs are appropriate when the full transition or averaging matrix is needed.  If only products $Px$ are required, the same factorisation gives
+\[
+        Px=Q\bigl(\Lambda(Q^{\top}x)\bigr),
+\]
+so the cost is determined by fast applications of $Q$ and $Q^{\top}$: Walsh--Hadamard bases allow fast Walsh--Hadamard transforms, and the cycle bases can be applied through Fourier-type transforms after passing through the corresponding real representation.  Thus the constructions below are not merely existence proofs; they provide structured matrix generators and matrix-free linear operators with verifiable stochasticity and spectral residuals.
 
 \section{The cycle-walk basis}\label{sec:cycle}
 From now on we reindex the list as $\sigma=(\lambda_0,\lambda_1,\ldots,\lambda_{n-1})$ with $\lambda_0=1$ and $\lambda_j\in[-1,0]$ for $1\le j\le n-1$, and use the cycle eigenbasis $Q=[w_0,\dots,w_{n-1}]$ described above.
@@ -305,7 +351,7 @@ which is non-negative if and only if $t\ge -1/(2\cos^2\Delta_n)$, i.e.\ $1+\sum_
 \begin{rem}We see that divisibility by $8$ is the exact barrier. Indeed, by Lemma~\ref{lem:cn}, the grid $\{2\pi m/n+\pi/4\}$ hits an odd half-angle iff $8\mid n$, and then $c_n=1$ so the factor $\tfrac12$ is unavoidable for this $Q$. If $8\nmid n$, the nearest grid point sits at angular distance $\Delta_n=\pi\rho(n)/(4n)$ from $\pi/2$, giving $c_n=\cos^2\Delta_n<1$ and hence $\delta_n<1/2$.
 \end{rem}
 
-\section{Phase-optimised cycle bases}
+\section{Phase-optimised cycle bases}\label{sec:phase}
 
 The eigenbasis of the $n$-cycle graph is not unique. For each $j \in \{1, \dots, \lfloor(n-1)/2\rfloor\}$, the corresponding eigenspace $E_j$ is two-dimensional, spanned by a sine and cosine vector. The canonical basis analysed in Section~\ref{sec:cycle} represents just one choice of basis within these spaces, a~choice that, for dimensions where $8 \mid n$, leads to an unavoidable coherence peak and a bound of $\delta_n=1/2$. This section demonstrates that by rotating the basis in each eigenspace via an optimally chosen phase angle $\phi$, we can construct a new orthogonal matrix $Q^{\rm (ph)}$. This `phase-optimised` basis is designed to minimise the maximum magnitude of its entries, effectively smoothing the coherence peaks and removing the ``$8 \mid n$'' artefact entirely. More specifically, for each $j\in\{1,\dots,\lfloor(n-1)/2\rfloor\}$ the cycle eigenspace is two-dimensional,
 $E_j=\operatorname{span}\{u_j,v_j\}$ with
@@ -470,11 +516,7 @@ and $0\le \delta^{\mathrm{(ph)}}_n<\tfrac12$ for every $n\ge 3$. Moreover, $\del
 \end{thm}
 
 \begin{proof}
-To show the upper bound, for each $j\in\{1,\dots,\lfloor (n-1)/2\rfloor\}$ let us choose the explicit phase
-\[
-\phi_j:=\Delta^\star\!\bigl(n/\gcd(j,n)\bigr),
-\]
-which attains the minimum in Lemma~\ref{lem:twophase} for $n'=n/\gcd(j,n)$, and replace the canonical pair $\{u_j,v_j\}$ by $\{w_j^{(\phi_j)},\tilde w_j^{(\phi_j)}\}$. This rotation within $E_j$ preserves orthonormality and keeps the Perron column $w_0=\1/\sqrt n$ unchanged; doing this independently for each $j$ yields an orthogonal matrix $Q^{\rm (ph)}$.
+To show the upper bound, for each $j\in\{1,\dots,\lfloor (n-1)/2\rfloor\}$ let us choose a phase $\phi_j$ that attains the minimum in Lemma~\ref{lem:twophase} for $n'=n/\gcd(j,n)$, and replace the canonical pair $\{u_j,v_j\}$ by $\{w_j^{(\phi_j)},\tilde w_j^{(\phi_j)}\}$. This rotation within $E_j$ preserves orthonormality and keeps the Perron column $w_0=\1/\sqrt n$ unchanged; doing this independently for each $j$ yields an orthogonal matrix $Q^{\rm (ph)}$.
 
 By Lemma~\ref{lem:twophase}, for each such $j$,
 \[
@@ -560,9 +602,12 @@ which is precisely the stated $\delta^{\rm (ph)}_n$.
 \begin{cor}[Uniform phase bound]\label{cor:uniform}
 As $\delta_\ast:=\sup_{n\ge3}\delta^{\mathrm{(ph)}}_n=\tfrac12$, for every $n\ge3$ and every Sule\u{\i}manova list $(1,\lambda_2,\ldots,\lambda_n)$ with $\lambda_j\le0$,
 \[
+\begin{aligned}
 1+\sum_{j=2}^{n}\lambda_j \;>\; \delta_\ast\ (= \tfrac12)
-\quad\Longrightarrow\quad
-Q^{(\mathrm{ph})}\,\Lambda\,\big(Q^{(\mathrm{ph)})}\big)^{\!\top}\ \text{is symmetric, doubly stochastic, and entrywise non-negative}.
+\quad &\Longrightarrow\quad
+P=Q^{(\mathrm{ph})}\Lambda\big(Q^{(\mathrm{ph})}\big)^{\!\top},\\
+& P\ \text{is symmetric, doubly stochastic, and entrywise non-negative}.
+\end{aligned}
 \]
 \end{cor}
 
@@ -589,9 +634,9 @@ p_{kl}=\frac1n\Bigl(1+\sum_{j=1}^{n-1}\lambda_j\,n\,q_j(k)q_j(l)\Bigr)
 since $\lambda_j\le0$ and $n\,q_j(k)q_j(l)\le M(Q)$.
 \end{proof}
 
-The cycle basis is the standard Fourier basis for the cyclic group $\mathbb{Z}_n$. To achieve the minimal coherence of $M=1$, we turn from the cycle graph to a different algebraic structure: the \emph{abelian 2-group}. An abelian 2-group is a group that is commutative and in which every element has an order that is a power of two; for a finite group, this is equivalent to its size being a power of two. The canonical example for any dimension $n=2^d$ is the elementary abelian 2-group $G = (\mathbb{Z}/2\mathbb{Z})^d$, whose elements can be viewed as binary vectors $\mathbf{x}=(x_1, \dots, x_d)$ of length $d$, and whose operation is vector addition modulo $2$ (bitwise XOR).
+The cycle basis is the standard Fourier basis for the cyclic group $\mathbb{Z}_n$. To achieve the minimal coherence $M=1$ with a real orthogonal basis, we turn instead to the elementary abelian $2$-group. General finite abelian $2$-groups may have complex characters; the real $\{\pm1\}$ character table used below is the one for the exponent-two group $G=(\mathbb{Z}/2\mathbb{Z})^d$. Its elements are binary vectors $\mathbf{x}=(x_1,\dots,x_d)$, and the group operation is vector addition modulo $2$ (bitwise XOR).
 
-The natural analogue of the Fourier basis on this group is the basis of its \emph{characters}. A character is a homomorphism $\chi\colon G \to \{\pm 1\}$. For each indexing vector $\mathbf{a} \in G$, there is a corresponding character $\chi_{\mathbf{a}}: G \to \{\pm 1\}$ defined by the dot product:
+The natural analogue of the Fourier basis on this group is the basis of its \emph{real characters}. For each indexing vector $\mathbf{a}\in G$, there is a corresponding character $\chi_{\mathbf{a}}:G\to\{\pm1\}$ defined by the dot product:
 \[
 \chi_{\mathbf{a}}(\mathbf{x}) = (-1)^{\mathbf{a}\cdot\mathbf{x}} = (-1)^{\sum_{i=1}^d a_i x_i}.
 \]
@@ -618,7 +663,7 @@ H_4 = \begin{pmatrix} H_2 & H_2 \\ H_2 & -H_2 \end{pmatrix} =
 \]
 By construction, the entries of $H_n$ are all $\pm 1$ and its columns are orthogonal. When normalised to $Q = H_n/\sqrt{n}$, we obtain an orthogonal matrix whose entries are all $\pm 1/\sqrt{n}$. This ``flat'' structure gives a coherence of $M(Q)=1$, providing a powerful tool for the SDIEP as formalised in the following theorem.
 
-\begin{thm}[bases stemming from abelian $2$-groups]\label{thm:hypercube}
+\begin{thm}[Walsh--Hadamard bases from elementary abelian $2$-groups]\label{thm:hypercube}
 If $n=2^d$, let $H_n$ be the Sylvester (Walsh--Hadamard) matrix of order $n$. After sign/permutation normalisation, $Q=H_n/\sqrt n$ is orthogonal with first column $\1/\sqrt n$ and entries $\pm 1/\sqrt n$, hence $M(Q)=1$. Therefore, for \emph{every} Sule\u{\i}manova spectrum with $1+\sum_{j=2}^n\lambda_j>0$, the matrix $Q\Lam Q^\top$ is symmetric and doubly stochastic.
 \end{thm}
 
@@ -694,10 +739,10 @@ For the canonical cycle basis, $M(Q)=2$ exactly when $8\mid n$ (Lemma~\ref{lem:c
 
 \section{Numerical analysis}\label{sec:numerics}
 
-We complement the theoretical analysis with numerical experiments. All computations were performed in Python~3.12 with NumPy~1.26.4~\cite{numpy}. Complete code, data files, and exact reproduction instructions are available in the companion software repository \texttt{sdiep-schur} at \url{https://github.com/tomaszkania/sdiep-schur-schur}. We test entrywise non-negativity with the tolerance $\min_{k,\ell} P(\Lambda)_{k\ell}\ge -10^{-12}$, which is conservative relative to round-off.
+We complement the theoretical analysis with numerical experiments aimed at numerical linear algebra usage: construction of structured bases, certification of entrywise non-negativity, residual checks, timing of dense kernels, Monte-Carlo stress testing, and application of the resulting matrices as Markov-chain and consensus operators. All computations were performed in Python~3.12 with NumPy~1.26.4~\cite{numpy}; the plotting used Matplotlib~\cite{matplotlib}. Complete code, data files, and exact reproduction instructions are available at \url{https://github.com/tomaszkania/sdiep-schur}, and the supplementary archive contains the scripts and CSV files used for the application tests below. We test entrywise non-negativity with the tolerance $\min_{k,\ell} P(\Lambda)_{k\ell}\ge -10^{-12}$, which is conservative relative to round-off.
 
 \subsection{Methodology}
-For each dimension $n$ we construct orthogonal bases $Q$ with Perron column $q_0=\mathbf{1}/\sqrt n$ of four types: (i) canonical cycle (Section~\ref{sec:cycle}); (ii) phase-optimised cycle (Section~3); (iii) Walsh--Hadamard (powers of two); and (iv) Paley type~I Hadamard (orders $q+1$ with $q\equiv3\pmod4$ prime). 
+For each dimension $n$ we construct orthogonal bases $Q$ with Perron column $q_0=\mathbf{1}/\sqrt n$ of four types: (i) canonical cycle (Section~\ref{sec:cycle}); (ii) phase-optimised cycle (Section~\ref{sec:phase}); (iii) Walsh--Hadamard (powers of two); and (iv) Paley type~I Hadamard (orders $q+1$ with $q\equiv3\pmod4$ prime). 
 
 Random Sule\u{\i}manova lists with prescribed trace sum $T=1+\sum_{j=2}^n\lambda_j$ are sampled as
 \[
@@ -744,11 +789,68 @@ Figure~\ref{fig:success} plots the empirical success rate $\mathbb P[P(\Lambda)\
 \includegraphics[width=0.95\textwidth]{fig_exp2_heatmap_n12.pdf}\par\medskip
 \includegraphics[width=0.95\textwidth]{fig_exp2_heatmap_n16.pdf}\par\medskip
 \includegraphics[width=0.95\textwidth]{fig_exp2_heatmap_n24.pdf}
-\caption{Empirical realisation probability $\mathbb{P}[P(\Lambda)\ge 0]$ as a function of the trace sum $T=1+\sum_{j\ge 2}\lambda_j$ for selected dimensions. Each block corresponds to one dimension ($n=8,12,16,24$), and within each block we compare the basis families implemented in the repository \url{https://github.com/tomaszkania/sdiep-schur-schur}. The main numerical message is a typical-case/worst-case distinction: the analytic quantities $\delta_n$ and $\delta_n^{(\mathrm{ph})}$ are worst-case sufficient thresholds, whereas for Dirichlet-sampled Sule\u{\i}manova lists the Schur template succeeds with high probability already below those values. In Hadamard orders (visible here at $n=16$), the success rate is numerically $1$ for all tested $T>0$, in agreement with Lemma~\ref{lem:coh}.}
+\caption{Empirical realisation probability $\mathbb{P}[P(\Lambda)\ge 0]$ as a function of the trace sum $T=1+\sum_{j\ge 2}\lambda_j$ for selected dimensions. Each block corresponds to one dimension ($n=8,12,16,24$), and within each block we compare the basis families implemented in the repository \url{https://github.com/tomaszkania/sdiep-schur}. The main numerical message is a typical-case/worst-case distinction: the analytic quantities $\delta_n$ and $\delta_n^{(\mathrm{ph})}$ are worst-case sufficient thresholds, whereas for Dirichlet-sampled Sule\u{\i}manova lists the Schur template succeeds with high probability already below those values. In Hadamard orders (visible here at $n=16$), the success rate is numerically $1$ for all tested $T>0$, in agreement with Lemma~\ref{lem:coh}.}
 \label{fig:success}
 \end{figure}
 
 
+
+\subsection{Application: reversible Markov chains with prescribed mixing rates}
+A symmetric doubly stochastic matrix is the transition matrix of a reversible Markov chain with uniform stationary distribution.  Consequently, the Schur construction can be used as a numerical design method: prescribe the non-Perron eigenvalues, certify non-negativity, and obtain a Markov chain whose convergence is controlled by the second-largest eigenvalue modulus (SLEM); see, for instance, the standard spectral viewpoint in Markov-chain mixing theory~\cite{LPW17}.
+
+We tested this design problem in the Hadamard order $n=16$.  For a fixed trace sum $T=0.05$ and target rates $r\in\{0.25,0.50,0.75,0.90\}$ we used
+\[
+\lambda_2=-r,\qquad
+\lambda_3=\cdots=\lambda_{16}=-\frac{1-T-r}{14}.
+\]
+The Hadamard certificate gives $\min_{k,\ell}P_{k\ell}\ge T/n=0.003125$ for every tested $r$.  Figure~\ref{fig:markovmixing} shows the total-variation distance from uniform for a point-mass initial distribution.  The observed iteration counts increase with the prescribed SLEM, as expected from the spectral construction.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.82\textwidth]{fig_exp6_markov_mixing.pdf}
+  \caption{Reversible Markov-chain design in the Hadamard order $n=16$.  Each curve uses a spectrum with trace sum $T=0.05$ and prescribed SLEM $r$.  The constructed transition matrices are symmetric, doubly stochastic, and entrywise non-negative by the $M(Q)=1$ certificate.  The total-variation distance from the uniform stationary distribution decays at a rate governed by the chosen non-Perron spectrum.}
+  \label{fig:markovmixing}
+\end{figure}
+
+\subsection{Application: average consensus with certified non-negative weights}
+The same matrices define linear average-consensus iterations
+\[
+        x^{(m+1)}=P x^{(m)},
+\]
+where symmetry and double stochasticity preserve the arithmetic mean and entrywise non-negativity makes every update a convex averaging step.  Such iterations are a standard numerical linear algebra model in distributed averaging and networked multi-agent systems~\cite{XiaoBoyd04,OlfatiSaber07}.
+
+This test illustrates why the phase-optimised cycle basis is useful beyond a marginal theoretical improvement.  Take $n=24$, so $8\mid n$ and the canonical cycle certificate has threshold $1/2$.  We prescribe the one-spike spectrum
+\[
+        (1,-0.505,0,\ldots,0),\qquad T=0.495.
+\]
+Here $T$ is below the canonical cycle threshold, but above the phase threshold $\delta_{24}^{(\mathrm{ph})}\approx0.491334$.  The canonical cycle construction with this same spectrum has a negative entry $-4.17\cdot10^{-4}$, whereas the phase-optimised construction is certified and has minimum entry $3.00\cdot10^{-4}$.  Figure~\ref{fig:consensus} shows the resulting consensus error for a random initial vector.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.82\textwidth]{fig_exp7_consensus.pdf}
+  \caption{Average-consensus test for the phase-optimised cycle basis at $n=24$ with spectrum $(1,-0.505,0,\ldots,0)$ and trace sum $T=0.495$.  The phase basis gives a valid non-negative averaging matrix even though the same trace sum lies below the canonical cycle threshold.  The relative disagreement norm decays according to the prescribed SLEM $0.505$.}
+  \label{fig:consensus}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Application diagnostics.  The Markov rows use the Hadamard basis at $n=16$ and tolerance $10^{-3}$ for total variation.  The consensus rows use $n=24$ and tolerance $10^{-6}$ for the relative disagreement norm; the canonical row is included as a failed non-negativity comparator for the same spectrum.  Row-sum and symmetry residuals in the successful rows are at round-off level.}
+\label{tab:application_diagnostics}
+\begin{tabular}{lrrrrrr}
+\toprule
+Case & $n$ & $T$ & SLEM & $\min P_{k\ell}$ & spectral residual & iter. \\
+\midrule
+Hadamard, $r=0.25$ & 16 & 0.050 & 0.250 & $3.125\cdot10^{-3}$ & $4.72\cdot10^{-16}$ & 5 \\
+Hadamard, $r=0.50$ & 16 & 0.050 & 0.500 & $3.125\cdot10^{-3}$ & $5.55\cdot10^{-16}$ & 9 \\
+Hadamard, $r=0.75$ & 16 & 0.050 & 0.750 & $3.125\cdot10^{-3}$ & $2.22\cdot10^{-16}$ & 22 \\
+Hadamard, $r=0.90$ & 16 & 0.050 & 0.900 & $3.125\cdot10^{-3}$ & $2.22\cdot10^{-16}$ & 59 \\
+Phase cycle & 24 & 0.495 & 0.505 & $3.00\cdot10^{-4}$ & $2.67\cdot10^{-16}$ & 17 \\
+Canonical cycle & 24 & 0.495 & 0.505 & $-4.17\cdot10^{-4}$ & $2.22\cdot10^{-16}$ & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\clearpage
 \subsection{Sharpness at the canonical cycle threshold}
 To exhibit the worst-case behaviour predicted by Proposition~\ref{prop:sharp}, we consider one-spike spectra in $n=12$: set $\lambda_{j^\ast}=t<0$ with $j^\ast=1$ (coprime to $n$) and $\lambda_j=0$ for $j\notin\{0,j^\ast\}$. By Lemma~\ref{lem:cn}, since $12\equiv4\pmod8$ we have $\rho(12)=4$ and thus $\Delta_{12}=\pi\rho(12)/(4\cdot 12)=\pi/12$. Proposition~\ref{prop:sharp} then predicts that $p_{k^\ast k^\ast}$ crosses zero at
 \[
@@ -767,15 +869,16 @@ Figure~\ref{fig:sharpness} shows that $\min_{k,\ell}P(\Lambda)_{k\ell}$ varies l
   \label{fig:sharpness}
 \end{figure}
 
+\clearpage
 \subsection{Computational cost}
 Constructing the canonical or phase-optimised cycle basis explicitly as a dense matrix costs $O(n^2)$ floating-point operations, dominated by evaluating trigonometric functions on an $n\times n$ grid. In contrast, Walsh--Hadamard bases can be generated recursively with $O(n^2)$ memory operations and admit fast matrix--vector multiplies via the fast Walsh--Hadamard transform.
 
-Evaluating $P(\Lambda)=Q\Lambda Q^\top$ as a dense matrix uses Level-3 BLAS operations: forming $Q\Lambda$ costs $O(n^2)$ flops (diagonal scaling), and the product $(Q\Lambda)Q^\top$ costs $O(n^3)$ flops using standard dense matrix multiplication. Representative timings are shown in Figure~\ref{fig:timing}. For moderate sizes (e.g.\ $n\le 128$) the method is inexpensive on a laptop CPU, and for repeated evaluations the structured bases (FFT/FWHT) allow significantly faster matrix--vector products without forming $P(\Lambda)$ explicitly.
+Evaluating $P(\Lambda)=Q\Lambda Q^\top$ as a dense matrix uses Level-3 BLAS operations: forming $Q\Lambda$ costs $O(n^2)$ flops (diagonal scaling), and the product $(Q\Lambda)Q^\top$ costs $O(n^3)$ flops using standard dense matrix multiplication. For moderate sizes (e.g.\ $n\le 128$) this is inexpensive on a laptop CPU, and for repeated evaluations the structured bases (FFT/FWHT) allow significantly faster matrix--vector products without forming $P(\Lambda)$ explicitly. Figure~\ref{fig:timing} summarises the measured construction and dense evaluation times in the tested range.
 
-\begin{figure}[t]
+\begin{figure}[h!]
   \centering
-  \includegraphics[width=0.88\textwidth]{fig_exp4_timing.pdf}
-  \caption{Wall-clock timings for basis construction and evaluation of $P(\Lambda)=Q\Lambda Q^\top$ on the tested dimensions. Constructing the canonical and phase-optimised cycle bases scales quadratically, while explicit evaluation of $P(\Lambda)$ as a dense matrix is dominated by the matrix--matrix product $(Q\Lambda)Q^\top$ and scales cubically. The Walsh--Hadamard basis is faster to construct because of its recursive structure.}
+  \includegraphics[width=0.82\textwidth]{fig_exp4_timing.pdf}
+  \caption{Measured construction and dense Schur-evaluation times for the implemented basis families. The timing experiment confirms the expected dense behaviour: basis construction is quadratic in storage, while forming the full matrix $P=Q\Lambda Q^{\top}$ is dominated by a dense matrix--matrix product. Walsh--Hadamard bases are especially cheap to construct recursively and can also be applied matrix-free by the fast Walsh--Hadamard transform.}
   \label{fig:timing}
 \end{figure}
 
@@ -809,25 +912,17 @@ cannot be improved by a sum–only condition within that template.
 Hadamard family (Walsh or Paley) guarantees realisation for every strict
 Sule\u{\i}manova list ($M(Q)=1$, hence $\delta=0$). Otherwise, the phase-optimised cycle basis
 improves uniformly over the canonical choice and removes the $8\mid n$ barrier.
+\item The Markov-chain and consensus tests show how the constructions can be used as numerical design tools: one prescribes spectral behaviour, receives a certified stochastic matrix, and verifies the row-sum, symmetry, spectral, and non-negativity residuals.
 \end{itemize}
 
-All code and data to reproduce Figures~\ref{fig:coherence}, \ref{fig:success}, \ref{fig:sharpness}, and~\ref{fig:timing}
-are available at\newline
+All code and data to reproduce Figures~\ref{fig:coherence}--\ref{fig:timing}, including the application experiments, are available at \url{https://github.com/tomaszkania/sdiep-schur}.  The supplementary archive contains the CSV files and the script \texttt{nla\_application\_experiments.py} used for Figures~\ref{fig:markovmixing} and~\ref{fig:consensus}.
 
-\url{https://github.com/tomaszkania/sdiep-schur-schur}. Additional representative values of the phase-optimised threshold are listed in Table~\ref{tab:S1} of the Appendix.
-
-\clearpage
 \appendix
 \section*{Appendix: Values and visualisation of the phase-optimised bound}
-\renewcommand{\thetable}{S\arabic{table}}
-\setcounter{table}{0}
 
-Selected numerical values of the phase-optimised threshold are collected in Table~\ref{tab:S1}; the full landscape up to $n=100$ is visualised in Figure~\ref{fig:supp_threshold}. In particular, Table~\ref{tab:S1} records representative values across the three congruence classes from Theorem~\ref{thm:phase-correct}.
+Using Theorem~\ref{thm:phase-correct}, concrete values (rounded) are:
 
-\begin{table}[t]
-\centering
-\caption{Selected values of the phase-optimised threshold $\delta^{\mathrm{(ph)}}_n$.}
-\label{tab:S1}
+\begin{center}
 \begin{tabular}{r r @{\qquad} r r @{\qquad} r r @{\qquad} r r}
 \hline
 $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\delta^{\mathrm{(ph)}}_n$ \\
@@ -838,7 +933,7 @@ $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\de
 30 & 0.4986267123 & 40 & 0.4969030207     & 60 & 0.4986267123 & 100 & 0.4995061949 \\
 \hline
 \end{tabular}
-\end{table}
+\end{center}
 
 \begin{figure}[t]
 \centering
@@ -868,7 +963,7 @@ $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\delta^{\mathrm{(ph)}}_n$ & $n$ & $\de
 %\addlegendentry{\tiny{sample $n$}}
 \end{axis}
 \end{tikzpicture}
-\caption{Phase-optimised threshold $\delta^{\mathrm{(ph)}}_n$ by congruence class. The three curves are the analytic envelopes from Theorem~\ref{thm:phase-correct}; plotted markers indicate representative integer values from Table~\ref{tab:S1}.}\label{fig:supp_threshold}
+\caption{Phase-optimised threshold $\delta^{\mathrm{(ph)}}_n$ by congruence class. Curves are envelopes; only integer $n$ on the labelled classes apply.}
 \end{figure}
 
 \newpage
@@ -893,6 +988,21 @@ K.~J.~Horadam,
 C.~R. Johnson and P.~Paparella.
 \newblock Perron spectratopes and the real nonnegative inverse eigenvalue problem.
 \newblock \emph{Linear Algebra and its Applications}, 493:281--300, 2016.
+
+\bibitem{LPW17}
+D.~A. Levin and Y.~Peres.
+\newblock \emph{Markov Chains and Mixing Times}.
+\newblock Second edition, American Mathematical Society, Providence, RI, 2017. With contributions by E.~L. Wilmer.
+
+\bibitem{OlfatiSaber07}
+R.~Olfati-Saber, J.~A. Fax, and R.~M. Murray.
+\newblock Consensus and cooperation in networked multi-agent systems.
+\newblock \emph{Proceedings of the IEEE}, 95(1):215--233, 2007.
+
+\bibitem{XiaoBoyd04}
+L.~Xiao and S.~Boyd.
+\newblock Fast linear iterations for distributed averaging.
+\newblock \emph{Systems \& Control Letters}, 53(1):65--78, 2004.
 
 \bibitem{numpy}
 C.~R. Harris \emph{et al.}, 

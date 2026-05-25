@@ -1,0 +1,3 @@
+experiment,basis,n,trace_sum,slem,min_entry,row_residual_inf,symmetry_residual_fro,spectral_residual_inf,iterations_to_tol
+consensus,phase-optimised cycle,24,0.495,0.505,0.0003003107385008541,4.440892098500626e-16,5.543322243988058e-17,2.6734153142918595e-16,17
+consensus,canonical cycle,24,0.495,0.505,-0.00041666666666664956,4.440892098500626e-16,7.128676692014338e-17,2.220446049250313e-16,-1
